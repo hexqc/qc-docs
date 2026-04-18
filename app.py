@@ -455,9 +455,17 @@ def serve_frontend(path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
 
-# Railway/Gunicorn 启动时自动初始化数据库
-with app.app_context():
-    init_db()
+@app.before_request
+def ensure_db_init():
+    """首次请求时自动初始化数据库"""
+    if not hasattr(app, '_db_initialized'):
+        try:
+            with app.app_context():
+                init_db()
+            app._db_initialized = True
+        except Exception as e:
+            print(f"DB init error: {e}")
 
 if __name__ == '__main__':
+    init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
