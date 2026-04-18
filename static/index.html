@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>质量版本控制系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1890ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --danger-color: #ff4d4f;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --bg-light: #f5f7fa;
+            --border-color: #e8e8e8;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-light);
+        }
+        /* 登录页 */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+        }
+        .login-card {
+            width: 400px;
+            padding: 40px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .login-card h3 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+        }
+        /* 主布局 */
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 220px;
+            background: #001529;
+            color: white;
+            flex-shrink: 0;
+        }
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-header h5 {
+            margin: 0;
+            font-size: 16px;
+        }
+        .sidebar-menu {
+            padding: 10px 0;
+        }
+        .menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .menu-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .menu-item.active {
+            background: var(--primary-color);
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .topbar {
+            height: 60px;
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+        .content-area {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        /* 卡片 */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: none;
+        }
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: white;
+        }
+        /* 统计卡片 */
+        .stat-card {
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        .stat-number {
+            font-size: 36px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        /* 状态标签 */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-draft { background: #f0f0f0; color: #666; }
+        .status-pending { background: #fff7e6; color: #fa8c16; }
+        .status-approved { background: #f6ffed; color: #52c41a; }
+        .status-rejected { background: #fff2f0; color: #ff4d4f; }
+        /* 表格 */
+        .table th {
+            background: var(--bg-light);
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .table td {
+            vertical-align: middle;
+        }
+        /* 按钮 */
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-primary:hover {
+            background: #40a9ff;
+            border-color: #40a9ff;
+        }
+        /* 审批流程 */
+        .approval-flow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 20px 0;
+        }
+        .approval-step {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            background: #f0f0f0;
+            color: #999;
+        }
+        .approval-step.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        .approval-step.done {
+            background: var(--success-color);
+            color: white;
+        }
+        /* 隐藏 */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 登录页 -->
+        <div v-if="!isLoggedIn" class="login-container">
+            <div class="login-card">
+                <h3><i class="bi bi-file-earmark-lock"></i> 质量版本控制系统</h3>
+                <div class="mb-3">
+                    <label class="form-label">用户名</label>
+                    <input v-model="loginForm.username" type="text" class="form-control" @keyup.enter="login">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">密码</label>
+                    <input v-model="loginForm.password" type="password" class="form-control" @keyup.enter="login">
+                </div>
+                <button class="btn btn-primary w-100" @click="login" :disabled="loading">
+                    <span v-if="loading" class="spinner-border spinner-border-sm"></span>
+                    登录
+                </button>
+                <div v-if="loginError" class="alert alert-danger mt-3 mb-0 py-2">{{ loginError }}</div>
+            </div>
+        </div>
+
+        <!-- 主界面 -->
+        <div v-else class="main-container">
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h5><i class="bi bi-file-earmark-lock"></i> 质量版控</h5>
+                </div>
+                <div class="sidebar-menu">
+                    <div class="menu-item" :class="{active: currentView === 'dashboard'}" @click="currentView = 'dashboard'">
+                        <i class="bi bi-grid"></i> 工作台
+                    </div>
+                    <div class="menu-item" :class="{active: currentView === 'documents'}" @click="currentView = 'documents'">
+                        <i class="bi bi-folder"></i> 文档管理
+                    </div>
+                    <div class="menu-item" :class="{active: currentView === 'pending'}" @click="currentView = 'pending'">
+                        <i class="bi bi-clock-history"></i> 待审批
+                        <span v-if="pendingCount > 0" class="badge bg-danger ms-auto">{{ pendingCount }}</span>
+                    </div>
+                    <div class="menu-item" :class="{active: currentView === 'upload'}" @click="currentView = 'upload'">
+                        <i class="bi bi-upload"></i> 上传文档
+                    </div>
+                    <div class="menu-item" :class="{active: currentView === 'reminders'}" @click="currentView = 'reminders'">
+                        <i class="bi bi-bell"></i> 提醒中心
+                    </div>
+                    <div class="menu-item" :class="{active: currentView === 'logs'}" @click="currentView = 'logs'">
+                        <i class="bi bi-list-check"></i> 操作日志
+                    </div>
+                    <div class="menu-item" v-if="currentUser.role === '管理员'" :class="{active: currentView === 'users'}" @click="currentView = 'users'">
+                        <i class="bi bi-people"></i> 用户管理
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主内容 -->
+            <div class="main-content">
+                <div class="topbar">
+                    <div>
+                        <span class="text-secondary">{{ currentUser.department || '' }}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <span><i class="bi bi-person-circle"></i> {{ currentUser.real_name }}</span>
+                        <button class="btn btn-sm btn-outline-secondary" @click="logout">退出</button>
+                    </div>
+                </div>
+
+                <div class="content-area">
+                    <!-- 工作台 -->
+                    <div v-if="currentView === 'dashboard'">
+                        <h5 class="mb-4">工作台</h5>
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="stat-number text-primary">{{ stats.total }}</div>
+                                    <div class="stat-label">文档总数</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card" @click="currentView = 'pending'">
+                                    <div class="stat-number text-warning">{{ stats.pending }}</div>
+                                    <div class="stat-label">待审批</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="stat-number text-success">{{ stats.approved }}</div>
+                                    <div class="stat-label">已发布</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="stat-number text-danger">{{ stats.soon_expired }}</div>
+                                    <div class="stat-label">即将过期</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <strong>最近文档</strong>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>标题</th>
+                                            <th>部门</th>
+                                            <th>版本</th>
+                                            <th>状态</th>
+                                            <th>更新时间</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="doc in recentDocs" :key="doc.id" @click="viewDoc(doc.id)" style="cursor:pointer">
+                                            <td>{{ doc.title }}</td>
+                                            <td>{{ doc.department || '-' }}</td>
+                                            <td>{{ doc.version }}</td>
+                                            <td><span :class="'status-badge status-' + doc.status.toLowerCase()">{{ doc.status }}</span></td>
+                                            <td>{{ formatDate(doc.updated_at) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 文档管理 -->
+                    <div v-if="currentView === 'documents'">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="mb-0">文档管理</h5>
+                            <button class="btn btn-primary" @click="currentView = 'upload'">
+                                <i class="bi bi-plus"></i> 上传文档
+                            </button>
+                        </div>
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <table class="table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>标题</th>
+                                            <th>类型</th>
+                                            <th>部门</th>
+                                            <th>版本</th>
+                                            <th>状态</th>
+                                            <th>作者</th>
+                                            <th>更新时间</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="doc in documents" :key="doc.id">
+                                            <td>{{ doc.title }}</td>
+                                            <td>{{ doc.doc_type || '-' }}</td>
+                                            <td>{{ doc.department || '-' }}</td>
+                                            <td>{{ doc.version }}</td>
+                                            <td><span :class="'status-badge status-' + doc.status.toLowerCase()">{{ doc.status }}</span></td>
+                                            <td>{{ doc.author }}</td>
+                                            <td>{{ formatDate(doc.updated_at) }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" @click="viewDoc(doc.id)">查看</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 待审批 -->
+                    <div v-if="currentView === 'pending'">
+                        <h5 class="mb-4">待审批文档</h5>
+                        <div v-if="pendingDocs.length === 0" class="text-center text-secondary py-5">
+                            <i class="bi bi-check-circle" style="font-size:48px"></i>
+                            <p class="mt-2">暂无待审批文档</p>
+                        </div>
+                        <div v-else class="row g-4">
+                            <div class="col-md-6" v-for="doc in pendingDocs" :key="doc.id">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6>{{ doc.title }}</h6>
+                                        <p class="text-secondary mb-2">{{ doc.department || '未分配部门' }}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-secondary">
+                                                当前级别：<span class="text-primary">{{ doc.current_level }}</span>
+                                            </small>
+                                            <button class="btn btn-sm btn-primary" @click="viewDoc(doc.id)">审批</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 上传文档 -->
+                    <div v-if="currentView === 'upload'">
+                        <h5 class="mb-4">上传新文档</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label class="form-label">文档标题 *</label>
+                                            <input v-model="uploadForm.title" type="text" class="form-control">
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label">文档类型</label>
+                                                <select v-model="uploadForm.doc_type" class="form-select">
+                                                    <option value="">请选择</option>
+                                                    <option>管理制度</option>
+                                                    <option>作业流程</option>
+                                                    <option>表单</option>
+                                                    <option>作业指导书</option>
+                                                    <option>其他</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">所属部门</label>
+                                                <input v-model="uploadForm.department" type="text" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">文档描述</label>
+                                            <textarea v-model="uploadForm.description" class="form-control" rows="3"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">有效期至</label>
+                                            <input v-model="uploadForm.expiry_date" type="date" class="form-control">
+                                        </div>
+                                        <button class="btn btn-primary" @click="submitDoc" :disabled="!uploadForm.title">
+                                            <i class="bi bi-upload"></i> 提交
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 文档详情/审批 -->
+                    <div v-if="currentView === 'docDetail'">
+                        <button class="btn btn-outline-secondary mb-3" @click="currentView = 'documents'">
+                            <i class="bi bi-arrow-left"></i> 返回
+                        </button>
+                        <div class="card">
+                            <div class="card-body">
+                                <h5>{{ currentDoc.title }}</h5>
+                                <p class="text-secondary">{{ currentDoc.description }}</p>
+                                
+                                <!-- 审批流程 -->
+                                <div class="approval-flow">
+                                    <div class="approval-step" :class="{done: hasApproved('一级'), active: currentDoc.current_level === '一级'}">一级审批</div>
+                                    <i class="bi bi-arrow-right text-secondary"></i>
+                                    <div class="approval-step" :class="{done: hasApproved('二级'), active: currentDoc.current_level === '二级'}">二级审批</div>
+                                    <i class="bi bi-arrow-right text-secondary"></i>
+                                    <div class="approval-step" :class="{done: hasApproved('三级'), active: currentDoc.current_level === '三级'}">三级审批</div>
+                                    <i class="bi bi-arrow-right text-secondary"></i>
+                                    <div class="approval-step" :class="{done: hasApproved('四级'), active: currentDoc.current_level === '四级'}">四级审批</div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <strong>版本：</strong> {{ currentDoc.version }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>状态：</strong>
+                                        <span :class="'status-badge status-' + currentDoc.status.toLowerCase()">{{ currentDoc.status }}</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>作者：</strong> {{ currentDoc.author }}
+                                    </div>
+                                </div>
+
+                                <!-- 审批记录 -->
+                                <div v-if="currentDoc.approval_records && currentDoc.approval_records.length > 0">
+                                    <h6 class="mt-4">审批记录</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>级别</th>
+                                                    <th>审批人</th>
+                                                    <th>动作</th>
+                                                    <th>意见</th>
+                                                    <th>时间</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="r in currentDoc.approval_records" :key="r.created_at">
+                                                    <td>{{ r.level }}</td>
+                                                    <td>{{ r.approver }}</td>
+                                                    <td>
+                                                        <span :class="r.action === 'approve' ? 'text-success' : 'text-danger'">
+                                                            {{ r.action === 'approve' ? '通过' : '驳回' }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ r.comment || '-' }}</td>
+                                                    <td>{{ formatDate(r.created_at) }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 审批操作 -->
+                                <div v-if="currentDoc.status === '审批中' && canApprove" class="mt-4 p-3 bg-light rounded">
+                                    <h6>审批操作</h6>
+                                    <div class="mb-3">
+                                        <textarea v-model="approvalComment" class="form-control" placeholder="审批意见（驳回时必填）"></textarea>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-success" @click="approveDoc">
+                                            <i class="bi bi-check"></i> 通过
+                                        </button>
+                                        <button class="btn btn-danger" @click="rejectDoc">
+                                            <i class="bi bi-x"></i> 驳回
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- 提交审批 -->
+                                <div v-if="currentDoc.status === '草稿' && currentDoc.author_id === currentUser.id" class="mt-4">
+                                    <button class="btn btn-primary" @click="submitApproval">
+                                        <i class="bi bi-send"></i> 提交审批
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 用户管理 -->
+                    <div v-if="currentView === 'users'">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="mb-0">用户管理</h5>
+                            <button class="btn btn-primary" @click="showAddUser = true">
+                                <i class="bi bi-plus"></i> 添加用户
+                            </button>
+                        </div>
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <table class="table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>用户名</th>
+                                            <th>姓名</th>
+                                            <th>部门</th>
+                                            <th>角色</th>
+                                            <th>状态</th>
+                                            <th>最后登录</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="u in users" :key="u.id">
+                                            <td>{{ u.username }}</td>
+                                            <td>{{ u.real_name }}</td>
+                                            <td>{{ u.department || '-' }}</td>
+                                            <td>{{ u.role }}</td>
+                                            <td><span :class="u.is_active ? 'text-success' : 'text-secondary'">{{ u.is_active ? '活跃' : '停用' }}</span></td>
+                                            <td>{{ u.last_login ? formatDate(u.last_login) : '-' }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const { createApp } = Vue;
+
+        // API 基础地址（部署后改成实际地址）
+        const API_BASE = window.location.origin + '/api';
+
+        createApp({
+            data() {
+                return {
+                    isLoggedIn: false,
+                    loading: false,
+                    loginError: '',
+                    loginForm: { username: '', password: '' },
+                    currentUser: {},
+                    currentView: 'dashboard',
+                    
+                    // 统计
+                    stats: { total: 0, pending: 0, approved: 0, rejected: 0, soon_expired: 0 },
+                    
+                    // 文档
+                    documents: [],
+                    recentDocs: [],
+                    pendingDocs: [],
+                    currentDoc: {},
+                    
+                    // 上传表单
+                    uploadForm: {
+                        title: '',
+                        doc_type: '',
+                        department: '',
+                        description: '',
+                        expiry_date: ''
+                    },
+                    
+                    // 审批
+                    approvalComment: '',
+                    
+                    // 用户
+                    users: [],
+                    showAddUser: false,
+                };
+            },
+            computed: {
+                pendingCount() {
+                    return this.pendingDocs.length;
+                },
+                canApprove() {
+                    // 根据角色判断能否审批当前文档
+                    const roleLevelMap = {
+                        '一级审批人': '一级',
+                        '二级审批人': '二级',
+                        '三级审批人': '三级',
+                        '四级审批人': '四级',
+                    };
+                    const myLevel = roleLevelMap[this.currentUser.role];
+                    return myLevel === this.currentDoc.current_level || this.currentUser.role === '管理员';
+                }
+            },
+            methods: {
+                async login() {
+                    this.loading = true;
+                    this.loginError = '';
+                    try {
+                        const res = await axios.post(`${API_BASE}/auth/login`, this.loginForm);
+                        if (res.data.success) {
+                            this.isLoggedIn = true;
+                            this.currentUser = res.data.user;
+                            localStorage.setItem('user', JSON.stringify(res.data.user));
+                            this.loadStats();
+                            this.loadDocuments();
+                            this.loadPending();
+                        }
+                    } catch (e) {
+                        this.loginError = e.response?.data?.message || '登录失败';
+                    }
+                    this.loading = false;
+                },
+                
+                logout() {
+                    axios.post(`${API_BASE}/auth/logout`);
+                    this.isLoggedIn = false;
+                    this.currentUser = {};
+                    localStorage.removeItem('user');
+                },
+                
+                async loadStats() {
+                    try {
+                        const res = await axios.get(`${API_BASE}/stats`);
+                        this.stats = res.data;
+                    } catch (e) {
+                        console.error('加载统计失败', e);
+                    }
+                },
+                
+                async loadDocuments() {
+                    try {
+                        const res = await axios.get(`${API_BASE}/documents`);
+                        this.documents = res.data;
+                        this.recentDocs = res.data.slice(0, 5);
+                    } catch (e) {
+                        console.error('加载文档失败', e);
+                    }
+                },
+                
+                async loadPending() {
+                    try {
+                        const res = await axios.get(`${API_BASE}/pending`);
+                        this.pendingDocs = res.data;
+                    } catch (e) {
+                        console.error('加载待审批失败', e);
+                    }
+                },
+                
+                async viewDoc(id) {
+                    try {
+                        const res = await axios.get(`${API_BASE}/documents/${id}`);
+                        this.currentDoc = res.data;
+                        this.currentView = 'docDetail';
+                    } catch (e) {
+                        console.error('加载文档详情失败', e);
+                    }
+                },
+                
+                async submitDoc() {
+                    try {
+                        const res = await axios.post(`${API_BASE}/documents`, this.uploadForm);
+                        if (res.data.success) {
+                            alert('上传成功！');
+                            this.uploadForm = { title: '', doc_type: '', department: '', description: '', expiry_date: '' };
+                            this.loadDocuments();
+                            this.currentView = 'documents';
+                        }
+                    } catch (e) {
+                        alert('上传失败：' + (e.response?.data?.message || '未知错误'));
+                    }
+                },
+                
+                async submitApproval() {
+                    if (!confirm('确定提交审批？')) return;
+                    try {
+                        await axios.post(`${API_BASE}/documents/${this.currentDoc.id}/submit`);
+                        alert('已提交审批');
+                        this.viewDoc(this.currentDoc.id);
+                    } catch (e) {
+                        alert('提交失败');
+                    }
+                },
+                
+                async approveDoc() {
+                    try {
+                        const res = await axios.post(`${API_BASE}/documents/${this.currentDoc.id}/approve`, {
+                            comment: this.approvalComment
+                        });
+                        alert('审批通过');
+                        this.approvalComment = '';
+                        this.viewDoc(this.currentDoc.id);
+                        this.loadPending();
+                        this.loadStats();
+                    } catch (e) {
+                        alert('操作失败：' + (e.response?.data?.message || ''));
+                    }
+                },
+                
+                async rejectDoc() {
+                    if (!this.approvalComment) {
+                        alert('驳回必须填写原因');
+                        return;
+                    }
+                    try {
+                        await axios.post(`${API_BASE}/documents/${this.currentDoc.id}/reject`, {
+                            comment: this.approvalComment
+                        });
+                        alert('已驳回');
+                        this.approvalComment = '';
+                        this.viewDoc(this.currentDoc.id);
+                        this.loadPending();
+                        this.loadStats();
+                    } catch (e) {
+                        alert('操作失败');
+                    }
+                },
+                
+                async loadUsers() {
+                    try {
+                        const res = await axios.get(`${API_BASE}/users`);
+                        this.users = res.data;
+                    } catch (e) {
+                        console.error('加载用户失败', e);
+                    }
+                },
+                
+                hasApproved(level) {
+                    return this.currentDoc.approval_records?.some(r => r.level === level && r.action === 'approve');
+                },
+                
+                formatDate(dateStr) {
+                    if (!dateStr) return '-';
+                    const d = new Date(dateStr);
+                    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                }
+            },
+            mounted() {
+                // 检查是否有保存的登录状态
+                const savedUser = localStorage.getItem('user');
+                if (savedUser) {
+                    this.currentUser = JSON.parse(savedUser);
+                    this.isLoggedIn = true;
+                    this.loadStats();
+                    this.loadDocuments();
+                    this.loadPending();
+                    if (this.currentUser.role === '管理员') {
+                        this.loadUsers();
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
