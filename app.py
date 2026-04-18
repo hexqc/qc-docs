@@ -455,17 +455,16 @@ def serve_frontend(path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
 
-@app.before_request
-def ensure_db_init():
-    """首次请求时自动初始化数据库"""
-    if not hasattr(app, '_db_initialized'):
-        try:
-            with app.app_context():
-                init_db()
-            app._db_initialized = True
-        except Exception as e:
-            print(f"DB init error: {e}")
+@app.route('/api/setup')
+def setup_db():
+    """手动初始化数据库和默认账号"""
+    try:
+        init_db()
+        return jsonify({'success': True, 'message': '数据库初始化完成'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    init_db()
+    with app.app_context():
+        init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
