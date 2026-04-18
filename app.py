@@ -455,6 +455,9 @@ def serve_frontend(path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
 
-if __name__ == '__main__':
+# Railway/Gunicorn 启动时自动初始化数据库
+with app.app_context():
     init_db()
+
+if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
